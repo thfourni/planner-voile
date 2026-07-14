@@ -97,6 +97,9 @@
     <div class="btns">
       <button class="act" id="undo">Annuler dernier point</button>
       <button class="act" id="clear">Tout effacer</button>
+      <button class="act" id="saveJson">Sauvegarder session</button>
+      <button class="act" id="loadJsonBtn">Charger session</button>
+      <input type="file" id="loadJsonInput" accept="application/json" style="display:none">
       <button class="act primary" id="gpx">Export GPX</button>
     </div>
   </div>
@@ -137,11 +140,54 @@
 
   var stages=[], active=0, layer=L.layerGroup().addTo(map), suppress=false;
   function color(i){return COLORS[i%COLORS.length];}
-  function addStage(name){stages.push({name:name||('Étape '+(stages.length+1)),date:'',time:'',wps:[]});active=stages.length-1;redraw();}
+  function addStage(name){stages.push({name:name||('Étape '+(stages.length+1)),date:'',time:'',wps:[],auto:true});active=stages.length-1;redraw();}
+
+  var geoCache={}, geoQueue=[], geoBusy=false;
+  function roundKey(p){return p.lat.toFixed(3)+','+p.lng.toFixed(3);}
+  function pumpGeoQueue(){
+    if(geoBusy||!geoQueue.length)return;
+    geoBusy=true;
+    var job=geoQueue.shift();
+    fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&addressdetails=1&lat='+job.lat+'&lon='+job.lng)
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var a=(d&&d.address)||{};
+        var name=a.hamlet||a.village||a.town||a.city||a.suburb||a.municipality||a.county||null;
+        geoCache[job.key]=name;job.cb(name);
+      })
+      .catch(function(){geoCache[job.key]=null;job.cb(null);})
+      .then(function(){setTimeout(function(){geoBusy=false;pumpGeoQueue();},1100);});
+  }
+  function geocode(p,cb){
+    var key=roundKey(p);
+    if(geoCache.hasOwnProperty(key)){cb(geoCache[key]);return;}
+    geoQueue.push({key:key,lat:p.lat,lng:p.lng,cb:cb});
+    pumpGeoQueue();
+  }
+  function scheduleAutoName(si){
+    var st=stages[si];
+    if(!st||!st.auto||!st.wps.length)return;
+    var first=st.wps[0], last=st.wps[st.wps.length-1];
+    geocode(first,function(nameA){
+      if(!stages[si]||!stages[si].auto)return;
+      if(stages[si].wps.length<2){
+        stages[si].name='Étape '+(si+1)+(nameA?': '+nameA:'');
+        renderStages();return;
+      }
+      geocode(last,function(nameB){
+        if(!stages[si]||!stages[si].auto)return;
+        var label='Étape '+(si+1);
+        if(nameA&&nameB)label+=': '+(nameA===nameB?nameA:nameA+' - '+nameB);
+        else if(nameA)label+=': '+nameA;
+        stages[si].name=label;
+        renderStages();
+      });
+    });
+  }
 
   function wpIcon(n,col,act){return L.divIcon({className:'wp'+(act?' act':''),html:'<span style="--c:'+col+'">'+n+'</span>',iconSize:[26,26],iconAnchor:[13,13]});}
   function addIcon(col){return L.divIcon({className:'add',html:'<span style="--c:'+col+'">+</span>',iconSize:[18,18],iconAnchor:[9,9]});}
-  function insert(si,i,lat,lng){suppress=true;setTimeout(function(){suppress=false;},0);stages[si].wps.splice(i,0,{lat:lat,lng:lng});redraw();}
+  function insert(si,i,lat,lng){suppress=true;setTimeout(function(){suppress=false;},0);stages[si].wps.splice(i,0,{lat:lat,lng:lng});redraw();scheduleAutoName(si);}
 
   function redraw(){
     layer.clearLayers();
@@ -160,8 +206,8 @@
       })(si,i,col);}
       st.wps.forEach(function(p,wi){(function(si,wi,col){
         var m=L.marker([p.lat,p.lng],{icon:wpIcon(wi+1,col,si===active),draggable:true});
-        m.on('dragend',function(e){var ll=e.target.getLatLng();stages[si].wps[wi]={lat:ll.lat,lng:ll.lng};redraw();});
-        m.on('contextmenu',function(e){L.DomEvent.preventDefault(e);stages[si].wps.splice(wi,1);redraw();});
+        m.on('dragend',function(e){var ll=e.target.getLatLng();stages[si].wps[wi]={lat:ll.lat,lng:ll.lng};redraw();scheduleAutoName(si);});
+        m.on('contextmenu',function(e){L.DomEvent.preventDefault(e);stages[si].wps.splice(wi,1);redraw();scheduleAutoName(si);});
         m.addTo(layer);
       })(si,wi,col);});
     });
@@ -181,7 +227,7 @@
       chip.addEventListener('click',function(e){if(e.target.tagName==='INPUT'||e.target.classList.contains('del'))return;active=si;redraw();});
       var inp=chip.querySelector('.cname');
       inp.style.width=(Math.max(4,st.name.length)+1)+'ch';
-      inp.addEventListener('change',function(){stages[si].name=inp.value||('Étape '+(si+1));redraw();});
+      inp.addEventListener('change',function(){stages[si].name=inp.value||('Étape '+(si+1));stages[si].auto=false;redraw();});
       chip.querySelector('.cdate').addEventListener('change',function(e){stages[si].date=e.target.value;redraw();});
       chip.querySelector('.ctime').addEventListener('change',function(e){stages[si].time=e.target.value;redraw();});
       chip.querySelector('.del').addEventListener('click',function(e){e.stopPropagation();stages.splice(si,1);if(!stages.length)addStage('Étape 1');if(active>=stages.length)active=stages.length-1;redraw();});
@@ -233,19 +279,53 @@
     document.getElementById('txt').value='ROUTE VOILE\n\n'+txt+'TOTAL SORTIE  '+tripD.toFixed(1)+' NM'+(spd>0?' · '+dur(tripT)+' @'+spd+'nds':'');
   }
 
-  map.on('click',function(e){if(suppress){suppress=false;return;}if(!stages.length)addStage('Étape 1');stages[active].wps.push({lat:e.latlng.lat,lng:e.latlng.lng});redraw();});
-  document.getElementById('undo').addEventListener('click',function(){if(stages[active])stages[active].wps.pop();redraw();});
+  map.on('click',function(e){if(suppress){suppress=false;return;}if(!stages.length)addStage('Étape 1');stages[active].wps.push({lat:e.latlng.lat,lng:e.latlng.lng});redraw();scheduleAutoName(active);});
+  document.getElementById('undo').addEventListener('click',function(){if(stages[active])stages[active].wps.pop();redraw();scheduleAutoName(active);});
   document.getElementById('clear').addEventListener('click',function(){stages=[];addStage('Étape 1');});
   document.getElementById('spd').addEventListener('input',render);
   document.getElementById('gpx').addEventListener('click',function(){
+    var spd=parseFloat(document.getElementById('spd').value)||0;
     var rtes=stages.filter(function(s){return s.wps.length;}).map(function(s){
+      var sd=stageStats(s);
+      var descParts=[];
+      if(s.date)descParts.push('Départ '+s.date+(s.time?' '+s.time:''));
+      descParts.push(sd.toFixed(1)+' NM');
+      if(spd>0)descParts.push('~'+dur(sd/spd)+' @ '+spd+' nds');
       var pts=s.wps.map(function(p,i){return '    <rtept lat="'+p.lat.toFixed(6)+'" lon="'+p.lng.toFixed(6)+'"><name>'+esc(s.name)+'-'+(i+1)+'</name></rtept>';}).join('\n');
-      return '  <rte><name>'+esc(s.name)+(s.date?' ('+s.date+')':'')+'</name>\n'+pts+'\n  </rte>';
+      return '  <rte><name>'+esc(s.name)+(s.date?' ('+s.date+')':'')+'</name><desc>'+esc(descParts.join(' · '))+'</desc>\n'+pts+'\n  </rte>';
     }).join('\n');
     var gpx='<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Planner voile" xmlns="http://www.topografix.com/GPX/1/1">\n'+rtes+'\n</gpx>';
     var url=URL.createObjectURL(new Blob([gpx],{type:'application/gpx+xml'}));
     var a=document.createElement('a');a.href=url;a.download='sortie-voile.gpx';document.body.appendChild(a);a.click();a.remove();
     setTimeout(function(){URL.revokeObjectURL(url);},1000);
+  });
+
+  document.getElementById('saveJson').addEventListener('click',function(){
+    var data={spd:parseFloat(document.getElementById('spd').value)||0,stages:stages};
+    var url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+    var a=document.createElement('a');a.href=url;a.download='session-voile.json';document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(url);},1000);
+  });
+  document.getElementById('loadJsonBtn').addEventListener('click',function(){document.getElementById('loadJsonInput').click();});
+  document.getElementById('loadJsonInput').addEventListener('change',function(e){
+    var file=e.target.files[0];if(!file)return;
+    var reader=new FileReader();
+    reader.onload=function(){
+      try{
+        var data=JSON.parse(reader.result);
+        if(!data||!Array.isArray(data.stages))throw new Error('format invalide');
+        stages=data.stages.map(function(s,i){return {
+          name:s.name||('Étape '+(i+1)),date:s.date||'',time:s.time||'',auto:!!s.auto,
+          wps:(s.wps||[]).map(function(p){return {lat:+p.lat,lng:+p.lng};})
+        };});
+        if(!stages.length)addStage('Étape 1');
+        active=0;
+        if(data.spd)document.getElementById('spd').value=data.spd;
+        redraw();
+      }catch(err){alert('Fichier JSON invalide : '+err.message);}
+    };
+    reader.readAsText(file);
+    e.target.value='';
   });
 
   addStage('Étape 1');
