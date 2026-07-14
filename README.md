@@ -7,10 +7,12 @@ traversée à la voile.
 ## Fonctionnalités
 
 - Placement de waypoints sur une carte interactive
-- Organisation de la route en étapes (date/heure de départ par étape)
+- Étapes gérées dans un panneau latéral gauche (date/heure de départ par étape)
 - Nommage automatique des étapes (lieu de départ - lieu d'arrivée) par géocodage inverse
 - Calcul de distance, cap et estimation de temps/arrivée en fonction de la vitesse
-- Couche vent (Open-Meteo) à la date/heure de départ de l'étape active
+- Annuler (Ctrl+Z) la dernière action, quel que soit son type
+- Panneau bas redimensionnable (glisser la barre au-dessus) pour ajuster l'espace carte/tableau
+- Couche vent (Open-Meteo) en grille sur toute la zone visible, avec un curseur pour animer la prévision heure par heure de la date de l'étape active
 - Export de la route au format GPX (avec description par étape) pour un GPS ou une app de navigation
 - Sauvegarde/chargement d'une session au format JSON
 

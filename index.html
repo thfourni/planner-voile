@@ -19,12 +19,22 @@
   .seatoggle{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;user-select:none;white-space:nowrap}
   .seatoggle input{accent-color:var(--cyan);width:15px;height:15px}
   .toggles{display:flex;align-items:center;gap:14px;flex-wrap:wrap;min-width:0}
-  .wxstatus{font-size:10px;color:var(--dim);letter-spacing:.04em;white-space:nowrap}
-  .wxa{font-size:20px;line-height:1;text-shadow:0 0 3px rgba(0,0,0,.9)}
+  .wxa{font-size:18px;line-height:1;text-shadow:0 0 3px rgba(0,0,0,.9)}
   .wxl{font:700 10px/1 var(--mono);text-shadow:0 0 3px rgba(0,0,0,.9);margin-top:1px}
 
-  #map{flex:1 1 auto;min-height:180px;background:#0a1826}
+  .main{flex:1 1 auto;display:flex;min-height:0;overflow:hidden}
+
+  .sidebar{width:230px;flex:0 0 auto;background:var(--panel);border-right:1px solid var(--edge);display:flex;flex-direction:column;overflow:hidden}
+  .sidebar-head{padding:10px 12px;font:600 10px/1 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--edge)}
+  .stages{display:flex;flex-direction:column;gap:8px;padding:10px;overflow-y:auto;flex:1 1 auto}
+
+  .mapcol{flex:1 1 auto;display:flex;flex-direction:column;min-width:0}
+  #map{flex:1 1 auto;min-height:100px;background:#0a1826}
   .leaflet-container{background:#0a1826;font-family:var(--sans)}
+
+  .resizer{flex:0 0 auto;height:8px;cursor:row-resize;background:var(--panel2);border-top:1px solid var(--edge);border-bottom:1px solid var(--edge);position:relative;touch-action:none}
+  .resizer::after{content:'';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:36px;height:3px;border-radius:2px;background:var(--edge)}
+  .resizer:hover::after,.resizer.active::after{background:var(--cyan)}
 
   .wp span{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;
     background:var(--c);color:#04121e;font:700 13px/1 var(--mono);border:2px solid rgba(255,255,255,.75);box-shadow:0 1px 6px rgba(0,0,0,.55)}
@@ -33,21 +43,20 @@
     color:var(--c);font:700 14px/1 var(--sans);border:1.5px dashed var(--c);background:rgba(255,255,255,.08);cursor:pointer}
   .add span:hover{background:var(--c);color:#04121e}
 
-  .panel{flex:0 0 auto;max-height:52vh;overflow-y:auto;background:var(--panel);border-top:1px solid var(--edge)}
+  .panel{flex:0 0 auto;height:280px;overflow-y:auto;background:var(--panel)}
 
-  .stages{display:flex;gap:8px;overflow-x:auto;padding:11px 14px;border-bottom:1px solid var(--edge)}
-  .chip{display:flex;flex-direction:column;align-items:stretch;gap:5px;padding:7px 9px;border:1px solid var(--edge);border-radius:10px;background:var(--panel2);white-space:nowrap;cursor:pointer;flex:0 0 auto;min-width:158px}
+  .chip{display:flex;flex-direction:column;align-items:stretch;gap:5px;padding:8px 9px;border:1px solid var(--edge);border-radius:10px;background:var(--panel2);cursor:pointer}
   .crow{display:flex;align-items:center;gap:6px}
-  .cdate,.ctime{background:var(--panel);border:1px solid var(--edge);color:var(--text);border-radius:6px;padding:3px 5px;font:11px var(--mono)}
-  .cdate{flex:1 1 auto;min-width:0} .ctime{width:78px}
+  .cdate,.ctime{background:var(--panel);border:1px solid var(--edge);color:var(--text);border-radius:6px;padding:3px 5px;font:11px var(--mono);min-width:0}
+  .cdate{flex:1 1 auto} .ctime{width:74px;flex:0 0 auto}
   .chip.active{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
-  .chip .dot{width:10px;height:10px;border-radius:50%;background:var(--c)}
-  .chip .cname{background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font:600 13px var(--sans);padding:0}
+  .chip .dot{width:10px;height:10px;border-radius:50%;background:var(--c);flex:0 0 auto}
+  .chip .cname{width:100%;background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font:600 13px var(--sans);padding:0;min-width:0}
   .chip .cname:focus{outline:none;border-bottom-color:var(--c)}
   .chip .meta{font:11px var(--mono);color:var(--dim)}
-  .chip .del{border:none;background:transparent;color:var(--dim);font-size:15px;line-height:1;cursor:pointer;padding:0 2px}
+  .chip .del{border:none;background:transparent;color:var(--dim);font-size:15px;line-height:1;cursor:pointer;padding:0 2px;flex:0 0 auto}
   .chip .del:hover{color:var(--red)}
-  .addstage{flex:0 0 auto;border:1px dashed var(--edge);border-radius:10px;background:transparent;color:var(--cyan);padding:6px 11px;cursor:pointer;font:600 12px var(--sans)}
+  .addstage{border:1px dashed var(--edge);border-radius:10px;background:transparent;color:var(--cyan);padding:9px 11px;cursor:pointer;font:600 12px var(--sans);margin:0 10px 10px}
   .addstage:hover{border-color:var(--cyan)}
 
   .controls{display:flex;flex-wrap:wrap;align-items:end;gap:10px 16px;padding:12px 14px;border-bottom:1px solid var(--edge)}
@@ -84,42 +93,82 @@
   details{padding:0 14px 14px}
   summary{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);cursor:pointer;padding:6px 0}
   textarea{width:100%;height:130px;background:var(--panel2);color:var(--text);border:1px solid var(--edge);border-radius:7px;padding:9px;font:12px/1.45 var(--mono);resize:vertical}
+
+  .wxpanel{width:230px;flex:0 0 auto;background:var(--panel);border-left:1px solid var(--edge);display:flex;flex-direction:column;overflow-y:auto}
+  .wxpanel-head{padding:10px 12px;border-bottom:1px solid var(--edge)}
+  .wxbody{padding:12px;display:flex;flex-direction:column;gap:14px}
+  .wxstatus{font-size:11px;color:var(--dim);line-height:1.5}
+  .wxslider{display:flex;flex-direction:column;gap:8px}
+  .wxtime{font:700 20px var(--mono);color:var(--cyan);text-align:center}
+  .wxslider input[type=range]{width:100%;accent-color:var(--cyan)}
+  .wxplayrow{display:flex;justify-content:center}
+  .wxlegend{display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--dim)}
+  .wxlegend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:middle}
+
+  @media (max-width:760px){
+    .sidebar{width:170px}
+    .wxpanel{width:170px}
+  }
 </style>
 
 <div class="bar">
   <div class="brand"><b>Route</b><small>planner voile</small></div>
   <div class="toggles">
     <label class="seatoggle"><input type="checkbox" id="seamark" checked> amers openseamap</label>
-    <label class="seatoggle"><input type="checkbox" id="wxToggle"> vent (open-meteo)</label>
-    <span class="wxstatus" id="wxStatus"></span>
+    <button class="act" id="undoBtn" title="Ctrl+Z" disabled>↶ Annuler</button>
   </div>
 </div>
 
-<div id="map"></div>
+<div class="main">
+  <div class="sidebar">
+    <div class="sidebar-head">Étapes</div>
+    <div class="stages" id="stages"></div>
+    <button class="addstage" id="addStageBtn">+ Étape</button>
+  </div>
 
-<div class="panel">
-  <div class="stages" id="stages"></div>
-  <div class="controls">
-    <div class="field"><label>Vitesse (nds)</label><input id="spd" type="number" min="0" step="0.1" value="5"></div>
-    <div class="spacer"></div>
-    <div class="btns">
-      <button class="act" id="undo">Annuler dernier point</button>
-      <button class="act" id="clear">Tout effacer</button>
-      <button class="act" id="saveJson">Sauvegarder session</button>
-      <button class="act" id="loadJsonBtn">Charger session</button>
-      <input type="file" id="loadJsonInput" accept="application/json" style="display:none">
-      <button class="act primary" id="gpx">Export GPX</button>
+  <div class="mapcol">
+    <div id="map"></div>
+    <div class="resizer" id="resizer"></div>
+    <div class="panel" id="panel">
+      <div class="controls">
+        <div class="field"><label>Vitesse (nds)</label><input id="spd" type="number" min="0" step="0.1" value="5"></div>
+        <div class="spacer"></div>
+        <div class="btns">
+          <button class="act" id="clear">Tout effacer</button>
+          <button class="act" id="saveJson">Sauvegarder session</button>
+          <button class="act" id="loadJsonBtn">Charger session</button>
+          <input type="file" id="loadJsonInput" accept="application/json" style="display:none">
+          <button class="act primary" id="gpx">Export GPX</button>
+        </div>
+      </div>
+      <div id="totalWrap" class="total" style="display:none">
+        <div><span class="lab">Total sortie</span> <span class="big" id="tDist">—</span></div>
+        <div><span class="lab">Temps</span> <b id="tTime">—</b> <span id="tSpd" style="color:var(--dim);font-size:13px"></span></div>
+        <div><span class="lab">Étapes</span> <span id="tStg" style="font-size:13px">0</span></div>
+        <div><span class="lab">Waypoints</span> <span id="tWp" style="font-size:13px">0</span></div>
+      </div>
+      <div id="tableWrap"></div>
+      <div class="foot"><div>Clic sur l'eau = ajouter un waypoint à l'étape active · clic sur une route ou sur le <span class="hint">⊕</span> = insérer un waypoint entre deux · glisser pour ajuster · clic droit sur un waypoint pour le supprimer · <b>Ctrl+Z</b> annule la dernière action · glisse la barre au-dessus de ce panneau pour l'agrandir/réduire. Le <b style="color:var(--amber)">cap</b> est un cap vrai ; chaque étape porte sa date et son heure de départ, et l'ETA se compte à partir d'elles.</div></div>
+      <details id="txtWrap" style="display:none"><summary>Résumé texte (copiable)</summary><textarea id="txt" readonly></textarea></details>
     </div>
   </div>
-  <div id="totalWrap" class="total" style="display:none">
-    <div><span class="lab">Total sortie</span> <span class="big" id="tDist">—</span></div>
-    <div><span class="lab">Temps</span> <b id="tTime">—</b> <span id="tSpd" style="color:var(--dim);font-size:13px"></span></div>
-    <div><span class="lab">Étapes</span> <span id="tStg" style="font-size:13px">0</span></div>
-    <div><span class="lab">Waypoints</span> <span id="tWp" style="font-size:13px">0</span></div>
+
+  <div class="wxpanel">
+    <div class="wxpanel-head"><label class="seatoggle"><input type="checkbox" id="wxToggle"> vent (open-meteo)</label></div>
+    <div class="wxbody">
+      <div class="wxstatus" id="wxStatus">Active la case pour charger le vent de la zone visible, à la date de l'étape active.</div>
+      <div class="wxslider" id="wxSliderWrap" style="display:none">
+        <div class="wxtime" id="wxTimeLabel">—</div>
+        <input type="range" id="wxSlider" min="0" max="23" value="12" step="1">
+        <div class="wxplayrow"><button class="act" id="wxPlay">▶ Lecture</button></div>
+      </div>
+      <div class="wxlegend">
+        <span><i style="background:var(--cyan)"></i>&lt; 10 nds</span>
+        <span><i style="background:var(--amber)"></i>10–20 nds</span>
+        <span><i style="background:var(--red)"></i>&gt; 20 nds</span>
+      </div>
+    </div>
   </div>
-  <div id="tableWrap"></div>
-  <div class="foot"><div>Clic sur l'eau = ajouter un waypoint à l'étape active · clic sur une route ou sur le <span class="hint">⊕</span> = insérer un waypoint entre deux · glisser pour ajuster · clic droit sur un waypoint pour le supprimer · « + Étape » pour une nouvelle journée. Le <b style="color:var(--amber)">cap</b> est un cap vrai ; chaque étape porte sa date et son heure de départ, et l'ETA se compte à partir d'elles. La case « vent (open-meteo) » affiche la prévision de vent (direction/force) aux waypoints de l'étape active, à la date et l'heure de départ renseignées (prévision disponible ~16 jours à l'avance).</div></div>
-  <details id="txtWrap" style="display:none"><summary>Résumé texte (copiable)</summary><textarea id="txt" readonly></textarea></details>
 </div>
 
 <script>
@@ -143,11 +192,41 @@
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
   var sea=L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenSeaMap'}).addTo(map);
   document.getElementById('seamark').addEventListener('change',function(e){if(e.target.checked){sea.addTo(map);sea.bringToFront();}else map.removeLayer(sea);});
-  document.getElementById('wxToggle').addEventListener('change',refreshWeather);
   setTimeout(function(){map.invalidateSize();},200);
   window.addEventListener('resize',function(){map.invalidateSize();});
 
+  var panelEl=document.getElementById('panel'), resizer=document.getElementById('resizer'), resizing=false, rsY=0, rsH=0;
+  function beginResize(y){resizing=true;rsY=y;rsH=panelEl.getBoundingClientRect().height;resizer.classList.add('active');}
+  function moveResize(y){if(!resizing)return;var h=Math.min(window.innerHeight*0.85,Math.max(120,rsH+(rsY-y)));panelEl.style.height=h+'px';map.invalidateSize();}
+  function endResize(){if(resizing){resizing=false;resizer.classList.remove('active');}}
+  resizer.addEventListener('mousedown',function(e){beginResize(e.clientY);e.preventDefault();});
+  window.addEventListener('mousemove',function(e){moveResize(e.clientY);});
+  window.addEventListener('mouseup',endResize);
+  resizer.addEventListener('touchstart',function(e){beginResize(e.touches[0].clientY);e.preventDefault();},{passive:false});
+  window.addEventListener('touchmove',function(e){if(resizing){moveResize(e.touches[0].clientY);e.preventDefault();}},{passive:false});
+  window.addEventListener('touchend',endResize);
+
   var stages=[], active=0, layer=L.layerGroup().addTo(map), wxLayer=L.layerGroup().addTo(map), suppress=false, wxTimer=null;
+
+  var history=[];
+  function snapshot(){history.push(JSON.stringify(stages));if(history.length>50)history.shift();document.getElementById('undoBtn').disabled=false;}
+  function undo(){
+    if(!history.length)return;
+    stages=JSON.parse(history.pop());
+    if(active>=stages.length)active=stages.length-1;
+    if(active<0)active=0;
+    redraw();
+    document.getElementById('undoBtn').disabled=!history.length;
+  }
+  document.getElementById('undoBtn').addEventListener('click',undo);
+  window.addEventListener('keydown',function(e){
+    var tag=(e.target&&e.target.tagName)||'';
+    if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&(e.key==='z'||e.key==='Z')){
+      if(tag==='INPUT'||tag==='TEXTAREA')return;
+      e.preventDefault();undo();
+    }
+  });
+
   function color(i){return COLORS[i%COLORS.length];}
   function addStage(name){stages.push({name:name||('Étape '+(stages.length+1)),date:'',time:'',wps:[],auto:true});active=stages.length-1;redraw();}
 
@@ -194,47 +273,92 @@
     });
   }
 
+  var wxData=null, wxPlaying=false, wxPlayTimer=null;
   function wxColor(spd){return spd>=20?'var(--red)':spd>=10?'var(--amber)':'var(--cyan)';}
-  function refreshWeather(){
-    var status=document.getElementById('wxStatus');
+  function gridPoints(bounds,cols,rows){
+    var pts=[], latStep=(bounds.getNorth()-bounds.getSouth())/(rows-1||1), lngStep=(bounds.getEast()-bounds.getWest())/(cols-1||1);
+    for(var r=0;r<rows;r++)for(var c=0;c<cols;c++)pts.push({lat:bounds.getSouth()+latStep*r,lng:bounds.getWest()+lngStep*c});
+    return pts;
+  }
+  function stopWxPlay(){
+    wxPlaying=false;
+    if(wxPlayTimer){clearInterval(wxPlayTimer);wxPlayTimer=null;}
+    var btn=document.getElementById('wxPlay');if(btn)btn.textContent='▶ Lecture';
+  }
+  function renderWxFrame(idx){
     wxLayer.clearLayers();
-    if(!document.getElementById('wxToggle').checked){status.textContent='';return;}
+    if(!wxData)return;
+    document.getElementById('wxTimeLabel').textContent=pad(idx)+':00';
+    wxData.points.forEach(function(p){
+      if(!p.hourly||!p.hourly.wind_speed_10m)return;
+      var spd=p.hourly.wind_speed_10m[idx], dir=p.hourly.wind_direction_10m[idx];
+      if(spd==null||dir==null)return;
+      var toDir=(dir+180)%360, col=wxColor(spd), r=10+Math.min(spd,30)*0.8;
+      var icon=L.divIcon({className:'',html:
+        '<div style="position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;pointer-events:none">'+
+        '<div style="position:absolute;width:'+(r*2)+'px;height:'+(r*2)+'px;border-radius:50%;background:'+col+';opacity:.22"></div>'+
+        '<div style="position:relative;display:flex;flex-direction:column;align-items:center;color:'+col+'">'+
+        '<div class="wxa" style="transform:rotate('+toDir+'deg)">➤</div>'+
+        '<div class="wxl">'+Math.round(spd)+'</div></div></div>',
+        iconSize:[44,44],iconAnchor:[22,22]});
+      L.marker([p.lat,p.lng],{icon:icon,interactive:false,zIndexOffset:200}).addTo(wxLayer);
+    });
+  }
+  function loadWeatherGrid(){
+    var status=document.getElementById('wxStatus'), sliderWrap=document.getElementById('wxSliderWrap');
+    if(!document.getElementById('wxToggle').checked){
+      wxLayer.clearLayers();sliderWrap.style.display='none';wxData=null;stopWxPlay();
+      status.textContent='Active la case pour charger le vent de la zone visible, à la date de l\'étape active.';
+      return;
+    }
     var st=stages[active];
-    if(!st||!st.wps.length){status.textContent='Étape active sans waypoint.';return;}
-    if(!st.date){status.textContent='Renseigne une date sur l\'étape pour charger le vent.';return;}
-    var pts=st.wps, sample=pts;
-    if(pts.length>8){sample=[];for(var i=0;i<8;i++)sample.push(pts[Math.round(i*(pts.length-1)/7)]);}
-    var lats=sample.map(function(p){return p.lat.toFixed(4);}).join(','),
-        lons=sample.map(function(p){return p.lng.toFixed(4);}).join(','),
-        hh=st.time?st.time.slice(0,2):'12';
+    if(!st||!st.date){
+      wxLayer.clearLayers();sliderWrap.style.display='none';wxData=null;stopWxPlay();
+      status.textContent='Renseigne une date sur l\'étape active pour charger le vent.';
+      return;
+    }
+    var pts=gridPoints(map.getBounds(),7,5);
+    var lats=pts.map(function(p){return p.lat.toFixed(3);}).join(','),
+        lons=pts.map(function(p){return p.lng.toFixed(3);}).join(',');
     status.textContent='Chargement météo…';
     var url='https://api.open-meteo.com/v1/forecast?latitude='+lats+'&longitude='+lons+
       '&hourly=wind_speed_10m,wind_direction_10m&wind_speed_unit=kn&timezone=UTC&start_date='+st.date+'&end_date='+st.date;
     fetch(url).then(function(r){return r.json();}).then(function(data){
       if(data&&data.error)throw new Error(data.reason||'plage de dates non couverte');
-      var arr=Array.isArray(data)?data:[data], shown=0;
-      arr.forEach(function(d,i){
-        if(!d||!d.hourly||!d.hourly.time)return;
-        var idx=d.hourly.time.findIndex(function(t){return t.slice(11,13)===hh;});
-        if(idx<0)idx=0;
-        var spd=d.hourly.wind_speed_10m[idx], dir=d.hourly.wind_direction_10m[idx];
-        if(spd==null||dir==null)return;
-        var p=sample[i], toDir=(dir+180)%360, col=wxColor(spd);
-        var icon=L.divIcon({className:'',html:
-          '<div style="display:flex;flex-direction:column;align-items:center;pointer-events:none;color:'+col+'">'+
-          '<div class="wxa" style="transform:rotate('+toDir+'deg)">➤</div>'+
-          '<div class="wxl">'+Math.round(spd)+'</div></div>',
-          iconSize:[40,40],iconAnchor:[20,20]});
-        L.marker([p.lat,p.lng],{icon:icon,interactive:false,zIndexOffset:200}).addTo(wxLayer);
-        shown++;
-      });
-      status.textContent=shown?('Vent · '+hh+':00 UTC · '+st.date):'Pas de données météo pour cette date.';
-    }).catch(function(err){status.textContent='Météo indisponible ('+err.message+').';});
+      var arr=Array.isArray(data)?data:[data];
+      wxData={date:st.date,points:pts.map(function(p,i){var d=arr[i];return {lat:p.lat,lng:p.lng,hourly:d&&d.hourly};})};
+      sliderWrap.style.display='flex';
+      var slider=document.getElementById('wxSlider');
+      var hh=st.time?parseInt(st.time.slice(0,2),10):12;
+      slider.value=hh;
+      renderWxFrame(hh);
+      status.textContent='Vent · '+st.date+' · zone visible';
+    }).catch(function(err){
+      wxData=null;wxLayer.clearLayers();sliderWrap.style.display='none';
+      status.textContent='Météo indisponible ('+err.message+').';
+      stopWxPlay();
+    });
   }
+  document.getElementById('wxToggle').addEventListener('change',loadWeatherGrid);
+  document.getElementById('wxSlider').addEventListener('input',function(e){renderWxFrame(parseInt(e.target.value,10));});
+  document.getElementById('wxPlay').addEventListener('click',function(){
+    if(wxPlaying){stopWxPlay();return;}
+    if(!wxData)return;
+    wxPlaying=true;this.textContent='⏸ Pause';
+    var slider=document.getElementById('wxSlider');
+    wxPlayTimer=setInterval(function(){
+      var v=(parseInt(slider.value,10)+1)%24;
+      slider.value=v;renderWxFrame(v);
+    },700);
+  });
+  map.on('moveend',function(){
+    if(wxTimer)clearTimeout(wxTimer);
+    wxTimer=setTimeout(loadWeatherGrid,600);
+  });
 
   function wpIcon(n,col,act){return L.divIcon({className:'wp'+(act?' act':''),html:'<span style="--c:'+col+'">'+n+'</span>',iconSize:[26,26],iconAnchor:[13,13]});}
   function addIcon(col){return L.divIcon({className:'add',html:'<span style="--c:'+col+'">+</span>',iconSize:[18,18],iconAnchor:[9,9]});}
-  function insert(si,i,lat,lng){suppress=true;setTimeout(function(){suppress=false;},0);stages[si].wps.splice(i,0,{lat:lat,lng:lng});redraw();scheduleAutoName(si);}
+  function insert(si,i,lat,lng){snapshot();suppress=true;setTimeout(function(){suppress=false;},0);stages[si].wps.splice(i,0,{lat:lat,lng:lng});redraw();scheduleAutoName(si);}
 
   function redraw(){
     layer.clearLayers();
@@ -253,14 +377,14 @@
       })(si,i,col);}
       st.wps.forEach(function(p,wi){(function(si,wi,col){
         var m=L.marker([p.lat,p.lng],{icon:wpIcon(wi+1,col,si===active),draggable:true});
-        m.on('dragend',function(e){var ll=e.target.getLatLng();stages[si].wps[wi]={lat:ll.lat,lng:ll.lng};redraw();scheduleAutoName(si);});
-        m.on('contextmenu',function(e){L.DomEvent.preventDefault(e);stages[si].wps.splice(wi,1);redraw();scheduleAutoName(si);});
+        m.on('dragend',function(e){snapshot();var ll=e.target.getLatLng();stages[si].wps[wi]={lat:ll.lat,lng:ll.lng};redraw();scheduleAutoName(si);});
+        m.on('contextmenu',function(e){L.DomEvent.preventDefault(e);snapshot();stages[si].wps.splice(wi,1);redraw();scheduleAutoName(si);});
         m.addTo(layer);
       })(si,wi,col);});
     });
     render();
     if(wxTimer)clearTimeout(wxTimer);
-    wxTimer=setTimeout(refreshWeather,500);
+    wxTimer=setTimeout(loadWeatherGrid,500);
   }
 
   function stageStats(st){var d=0;for(var i=1;i<st.wps.length;i++)d+=legNM(st.wps[i-1],st.wps[i]);return d;}
@@ -275,22 +399,20 @@
         '<div class="meta">'+st.wps.length+' pts · '+d.toFixed(1)+' NM</div>';
       chip.addEventListener('click',function(e){if(e.target.tagName==='INPUT'||e.target.classList.contains('del'))return;active=si;redraw();});
       var inp=chip.querySelector('.cname');
-      inp.style.width=(Math.max(4,st.name.length)+1)+'ch';
-      inp.addEventListener('change',function(){stages[si].name=inp.value||('Étape '+(si+1));stages[si].auto=false;redraw();});
-      chip.querySelector('.cdate').addEventListener('change',function(e){stages[si].date=e.target.value;redraw();});
-      chip.querySelector('.ctime').addEventListener('change',function(e){stages[si].time=e.target.value;redraw();});
-      chip.querySelector('.del').addEventListener('click',function(e){e.stopPropagation();stages.splice(si,1);if(!stages.length)addStage('Étape 1');if(active>=stages.length)active=stages.length-1;redraw();});
+      inp.addEventListener('change',function(){snapshot();stages[si].name=inp.value||('Étape '+(si+1));stages[si].auto=false;redraw();});
+      chip.querySelector('.cdate').addEventListener('change',function(e){snapshot();stages[si].date=e.target.value;redraw();});
+      chip.querySelector('.ctime').addEventListener('change',function(e){snapshot();stages[si].time=e.target.value;redraw();});
+      chip.querySelector('.del').addEventListener('click',function(e){e.stopPropagation();snapshot();stages.splice(si,1);if(!stages.length)addStage('Étape 1');if(active>=stages.length)active=stages.length-1;redraw();});
       host.appendChild(chip);
     });
-    var add=document.createElement('button');add.className='addstage';add.textContent='+ Étape';
-    add.addEventListener('click',function(){addStage();});host.appendChild(add);
   }
+
+  document.getElementById('addStageBtn').addEventListener('click',function(){snapshot();addStage();});
 
   function render(){
     renderStages();
     var spd=parseFloat(document.getElementById('spd').value)||0;
     var totalWp=stages.reduce(function(a,s){return a+s.wps.length;},0);
-    document.getElementById('undo').disabled=!stages[active]||!stages[active].wps.length;
     document.getElementById('gpx').disabled=stages.every(function(s){return s.wps.length<2;});
 
     var tw=document.getElementById('totalWrap'),xw=document.getElementById('txtWrap'),wrap=document.getElementById('tableWrap');
@@ -328,9 +450,14 @@
     document.getElementById('txt').value='ROUTE VOILE\n\n'+txt+'TOTAL SORTIE  '+tripD.toFixed(1)+' NM'+(spd>0?' · '+dur(tripT)+' @'+spd+'nds':'');
   }
 
-  map.on('click',function(e){if(suppress){suppress=false;return;}if(!stages.length)addStage('Étape 1');stages[active].wps.push({lat:e.latlng.lat,lng:e.latlng.lng});redraw();scheduleAutoName(active);});
-  document.getElementById('undo').addEventListener('click',function(){if(stages[active])stages[active].wps.pop();redraw();scheduleAutoName(active);});
-  document.getElementById('clear').addEventListener('click',function(){stages=[];addStage('Étape 1');});
+  map.on('click',function(e){
+    if(suppress){suppress=false;return;}
+    if(!stages.length)addStage('Étape 1');
+    snapshot();
+    stages[active].wps.push({lat:e.latlng.lat,lng:e.latlng.lng});
+    redraw();scheduleAutoName(active);
+  });
+  document.getElementById('clear').addEventListener('click',function(){snapshot();stages=[];addStage('Étape 1');});
   document.getElementById('spd').addEventListener('input',render);
   document.getElementById('gpx').addEventListener('click',function(){
     var spd=parseFloat(document.getElementById('spd').value)||0;
@@ -363,6 +490,7 @@
       try{
         var data=JSON.parse(reader.result);
         if(!data||!Array.isArray(data.stages))throw new Error('format invalide');
+        snapshot();
         stages=data.stages.map(function(s,i){return {
           name:s.name||('Étape '+(i+1)),date:s.date||'',time:s.time||'',auto:!!s.auto,
           wps:(s.wps||[]).map(function(p){return {lat:+p.lat,lng:+p.lng};})
