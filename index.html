@@ -19,8 +19,7 @@
   .seatoggle{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;user-select:none;white-space:nowrap}
   .seatoggle input{accent-color:var(--cyan);width:15px;height:15px}
   .toggles{display:flex;align-items:center;gap:14px;flex-wrap:wrap;min-width:0}
-  .wxa{font-size:18px;line-height:1;text-shadow:0 0 3px rgba(0,0,0,.9)}
-  .wxl{font:700 10px/1 var(--mono);text-shadow:0 0 3px rgba(0,0,0,.9);margin-top:1px}
+  .wxl{font:700 10px/1 var(--mono);text-shadow:0 0 3px rgba(0,0,0,.9)}
 
   .main{flex:1 1 auto;display:flex;min-height:0;overflow:hidden}
 
@@ -166,6 +165,7 @@
         <span><i style="background:var(--cyan)"></i>&lt; 10 nds</span>
         <span><i style="background:var(--amber)"></i>10–20 nds</span>
         <span><i style="background:var(--red)"></i>&gt; 20 nds</span>
+        <span style="margin-top:4px">Hampe = provenance du vent · grande barbe = 10 nds · petite barbe = 5 nds · fanion = 50 nds</span>
       </div>
     </div>
   </div>
@@ -285,6 +285,19 @@
     if(wxPlayTimer){clearInterval(wxPlayTimer);wxPlayTimer=null;}
     var btn=document.getElementById('wxPlay');if(btn)btn.textContent='▶ Lecture';
   }
+  function windBarbSVG(spd,col){
+    var v=Math.round(spd/5)*5;
+    var pennants=Math.floor(v/50);v=v%50;
+    var full=Math.floor(v/10);v=v%10;
+    var half=v>=5?1:0;
+    var s='<line x1="20" y1="34" x2="20" y2="8" stroke="'+col+'" stroke-width="2" stroke-linecap="round"/>';
+    var y=8, step=6;
+    for(var i=0;i<pennants;i++){s+='<polygon points="20,'+y+' 30,'+(y+5)+' 20,'+(y+7)+'" fill="'+col+'"/>';y+=step+1;}
+    for(var i=0;i<full;i++){s+='<line x1="20" y1="'+y+'" x2="30" y2="'+(y+5)+'" stroke="'+col+'" stroke-width="2" stroke-linecap="round"/>';y+=step;}
+    if(half)s+='<line x1="20" y1="'+y+'" x2="25" y2="'+(y+2.5)+'" stroke="'+col+'" stroke-width="2" stroke-linecap="round"/>';
+    if(!pennants&&!full&&!half)s+='<circle cx="20" cy="20" r="4" fill="none" stroke="'+col+'" stroke-width="2"/>';
+    return '<circle cx="20" cy="34" r="2.5" fill="'+col+'"/>'+s;
+  }
   function renderWxFrame(idx){
     wxLayer.clearLayers();
     if(!wxData)return;
@@ -293,14 +306,13 @@
       if(!p.hourly||!p.hourly.wind_speed_10m)return;
       var spd=p.hourly.wind_speed_10m[idx], dir=p.hourly.wind_direction_10m[idx];
       if(spd==null||dir==null)return;
-      var toDir=(dir+180)%360, col=wxColor(spd), r=10+Math.min(spd,30)*0.8;
-      var icon=L.divIcon({className:'',html:
-        '<div style="position:relative;width:44px;height:44px;display:flex;align-items:center;justify-content:center;pointer-events:none">'+
-        '<div style="position:absolute;width:'+(r*2)+'px;height:'+(r*2)+'px;border-radius:50%;background:'+col+';opacity:.22"></div>'+
-        '<div style="position:relative;display:flex;flex-direction:column;align-items:center;color:'+col+'">'+
-        '<div class="wxa" style="transform:rotate('+toDir+'deg)">➤</div>'+
-        '<div class="wxl">'+Math.round(spd)+'</div></div></div>',
-        iconSize:[44,44],iconAnchor:[22,22]});
+      var col=wxColor(spd);
+      var icon=L.divIcon({className:'wxmarker',html:
+        '<div style="position:relative;width:44px;height:52px;pointer-events:none">'+
+        '<svg width="40" height="40" viewBox="0 0 40 40" style="position:absolute;left:2px;top:0;overflow:visible;transform:rotate('+dir+'deg);transform-origin:20px 34px">'+windBarbSVG(spd,col)+'</svg>'+
+        '<div class="wxl" style="position:absolute;left:0;right:0;top:38px;text-align:center;color:'+col+'">'+Math.round(spd)+'</div>'+
+        '</div>',
+        iconSize:[44,52],iconAnchor:[22,34]});
       L.marker([p.lat,p.lng],{icon:icon,interactive:false,zIndexOffset:200}).addTo(wxLayer);
     });
   }
@@ -317,7 +329,7 @@
       status.textContent='Renseigne une date sur l\'étape active pour charger le vent.';
       return;
     }
-    var pts=gridPoints(map.getBounds(),7,5);
+    var pts=gridPoints(map.getBounds(),14,10);
     var lats=pts.map(function(p){return p.lat.toFixed(3);}).join(','),
         lons=pts.map(function(p){return p.lng.toFixed(3);}).join(',');
     status.textContent='Chargement météo…';
