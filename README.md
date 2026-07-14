@@ -8,8 +8,11 @@ traversée à la voile.
 
 - Placement de waypoints sur une carte interactive
 - Organisation de la route en étapes (date/heure de départ par étape)
+- Nommage automatique des étapes (lieu de départ - lieu d'arrivée) par géocodage inverse
 - Calcul de distance, cap et estimation de temps/arrivée en fonction de la vitesse
-- Export de la route au format GPX pour un GPS ou une app de navigation
+- Couche vent (Open-Meteo) à la date/heure de départ de l'étape active
+- Export de la route au format GPX (avec description par étape) pour un GPS ou une app de navigation
+- Sauvegarde/chargement d'une session au format JSON
 
 ## Utiliser l'outil
 
