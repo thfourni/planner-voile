@@ -1,0 +1,253 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{
+    --bg:#081521; --panel:#0e2135; --panel2:#0a1a2b; --edge:#1c3a56;
+    --text:#e8eff6; --dim:#7f9ab2; --cyan:#37d0e0; --amber:#f2b134; --red:#ff5a52;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box} html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+  .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 14px;background:var(--panel2);border-bottom:1px solid var(--edge)}
+  .brand{display:flex;align-items:baseline;gap:9px;min-width:0}
+  .brand b{font-size:14px;letter-spacing:.14em;text-transform:uppercase;font-weight:700}
+  .brand small{font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+  .seatoggle{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;user-select:none;white-space:nowrap}
+  .seatoggle input{accent-color:var(--cyan);width:15px;height:15px}
+
+  #map{flex:1 1 auto;min-height:180px;background:#0a1826}
+  .leaflet-container{background:#0a1826;font-family:var(--sans)}
+
+  .wp span{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;
+    background:var(--c);color:#04121e;font:700 13px/1 var(--mono);border:2px solid rgba(255,255,255,.75);box-shadow:0 1px 6px rgba(0,0,0,.55)}
+  .wp.act span{border-color:#fff;box-shadow:0 0 0 2px rgba(255,255,255,.4),0 1px 6px rgba(0,0,0,.55)}
+  .add span{display:flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;
+    color:var(--c);font:700 14px/1 var(--sans);border:1.5px dashed var(--c);background:rgba(255,255,255,.08);cursor:pointer}
+  .add span:hover{background:var(--c);color:#04121e}
+
+  .panel{flex:0 0 auto;max-height:52vh;overflow-y:auto;background:var(--panel);border-top:1px solid var(--edge)}
+
+  .stages{display:flex;gap:8px;overflow-x:auto;padding:11px 14px;border-bottom:1px solid var(--edge)}
+  .chip{display:flex;flex-direction:column;align-items:stretch;gap:5px;padding:7px 9px;border:1px solid var(--edge);border-radius:10px;background:var(--panel2);white-space:nowrap;cursor:pointer;flex:0 0 auto;min-width:158px}
+  .crow{display:flex;align-items:center;gap:6px}
+  .cdate,.ctime{background:var(--panel);border:1px solid var(--edge);color:var(--text);border-radius:6px;padding:3px 5px;font:11px var(--mono)}
+  .cdate{flex:1 1 auto;min-width:0} .ctime{width:78px}
+  .chip.active{border-color:var(--c);box-shadow:inset 0 0 0 1px var(--c)}
+  .chip .dot{width:10px;height:10px;border-radius:50%;background:var(--c)}
+  .chip .cname{background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font:600 13px var(--sans);padding:0}
+  .chip .cname:focus{outline:none;border-bottom-color:var(--c)}
+  .chip .meta{font:11px var(--mono);color:var(--dim)}
+  .chip .del{border:none;background:transparent;color:var(--dim);font-size:15px;line-height:1;cursor:pointer;padding:0 2px}
+  .chip .del:hover{color:var(--red)}
+  .addstage{flex:0 0 auto;border:1px dashed var(--edge);border-radius:10px;background:transparent;color:var(--cyan);padding:6px 11px;cursor:pointer;font:600 12px var(--sans)}
+  .addstage:hover{border-color:var(--cyan)}
+
+  .controls{display:flex;flex-wrap:wrap;align-items:end;gap:10px 16px;padding:12px 14px;border-bottom:1px solid var(--edge)}
+  .field{display:flex;flex-direction:column;gap:4px}
+  .field label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+  .field input{width:82px;background:var(--panel2);border:1px solid var(--edge);color:var(--text);border-radius:7px;padding:7px 9px;font:600 14px/1 var(--mono)}
+  .field input:focus{outline:none;border-color:var(--cyan)}
+  .spacer{flex:1 1 auto}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  button.act{font:12px var(--sans);cursor:pointer;border-radius:7px;padding:8px 12px;border:1px solid var(--edge);background:var(--panel2);color:var(--text)}
+  button.act:hover{border-color:var(--cyan)} button.act:disabled{opacity:.4;cursor:not-allowed}
+  button.primary{background:var(--cyan);border-color:var(--cyan);color:#03141b;font-weight:700}
+
+  .total{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 20px;padding:11px 14px;border-bottom:1px solid var(--edge);font-family:var(--mono)}
+  .total .big{font-size:22px;font-weight:700;color:var(--cyan)}
+  .total .lab{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);font-family:var(--sans)}
+  .total .sub b{color:var(--amber);font-weight:700}
+
+  table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:13px}
+  thead th{position:sticky;top:0;background:var(--panel);text-align:right;padding:8px 14px;font:600 10px/1 var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--edge)}
+  thead th:first-child{text-align:left}
+  tbody td{padding:7px 14px;text-align:right;border-bottom:1px solid rgba(28,58,86,.5)}
+  tbody td:first-child{text-align:left;color:var(--dim)}
+  tr.shead td{background:rgba(255,255,255,.035);border-top:2px solid var(--edge);font-family:var(--sans);font-weight:700}
+  tr.shead .sc{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--c);margin-right:8px;vertical-align:middle}
+  tr.shead .snm{color:var(--c)}
+  tr.shead td{color:var(--c)}
+  tr.leg td:first-child{color:var(--dim)}
+  .d-dist{color:var(--cyan)} .d-cap{color:var(--amber)} .d-cum{color:var(--text)} .d-eta{color:var(--dim)}
+  .empty{padding:26px 16px;text-align:center;color:var(--dim);font-size:13px;line-height:1.6}
+  .empty b{color:var(--text)}
+  .foot{display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px;font-size:11px;color:var(--dim);line-height:1.5}
+  .hint{color:var(--amber)}
+  details{padding:0 14px 14px}
+  summary{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);cursor:pointer;padding:6px 0}
+  textarea{width:100%;height:130px;background:var(--panel2);color:var(--text);border:1px solid var(--edge);border-radius:7px;padding:9px;font:12px/1.45 var(--mono);resize:vertical}
+</style>
+
+<div class="bar">
+  <div class="brand"><b>Route</b><small>planner voile</small></div>
+  <label class="seatoggle"><input type="checkbox" id="seamark" checked> amers openseamap</label>
+</div>
+
+<div id="map"></div>
+
+<div class="panel">
+  <div class="stages" id="stages"></div>
+  <div class="controls">
+    <div class="field"><label>Vitesse (nds)</label><input id="spd" type="number" min="0" step="0.1" value="5"></div>
+    <div class="spacer"></div>
+    <div class="btns">
+      <button class="act" id="undo">Annuler dernier point</button>
+      <button class="act" id="clear">Tout effacer</button>
+      <button class="act primary" id="gpx">Export GPX</button>
+    </div>
+  </div>
+  <div id="totalWrap" class="total" style="display:none">
+    <div><span class="lab">Total sortie</span> <span class="big" id="tDist">—</span></div>
+    <div><span class="lab">Temps</span> <b id="tTime">—</b> <span id="tSpd" style="color:var(--dim);font-size:13px"></span></div>
+    <div><span class="lab">Étapes</span> <span id="tStg" style="font-size:13px">0</span></div>
+    <div><span class="lab">Waypoints</span> <span id="tWp" style="font-size:13px">0</span></div>
+  </div>
+  <div id="tableWrap"></div>
+  <div class="foot"><div>Clic sur l'eau = ajouter un waypoint à l'étape active · clic sur une route ou sur le <span class="hint">⊕</span> = insérer un waypoint entre deux · glisser pour ajuster · clic droit sur un waypoint pour le supprimer · « + Étape » pour une nouvelle journée. Le <b style="color:var(--amber)">cap</b> est un cap vrai ; chaque étape porte sa date et son heure de départ, et l'ETA se compte à partir d'elles.</div></div>
+  <details id="txtWrap" style="display:none"><summary>Résumé texte (copiable)</summary><textarea id="txt" readonly></textarea></details>
+</div>
+
+<script>
+(function(){
+  var COLORS=['#37d0e0','#f2b134','#3ad07a','#ff7ac6','#9d8cff','#ff8a3d','#5ad1a8','#e05a5a'];
+  var R=3440.065, rad=function(d){return d*Math.PI/180;};
+  function legNM(a,b){var p1=rad(a.lat),p2=rad(b.lat),dp=rad(b.lat-a.lat),dl=rad(b.lng-a.lng);
+    var x=Math.sin(dp/2)*Math.sin(dp/2)+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)*Math.sin(dl/2);return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
+  function bearing(a,b){var p1=rad(a.lat),p2=rad(b.lat),dl=rad(b.lng-a.lng);
+    var y=Math.sin(dl)*Math.cos(p2),x=Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl);return (Math.atan2(y,x)*180/Math.PI+360)%360;}
+  function pad(n){return (n<10?'0':'')+n;}
+  function cap3(d){d=Math.round(d)%360;return (d<100?(d<10?'00':'0'):'')+d;}
+  function dur(h){if(!isFinite(h)||h<0)return '—';var m=Math.round(h*60);return Math.floor(m/60)+'h'+pad(m%60);}
+  function clock(s,a){var t=(s+Math.round(a*60))%1440;if(t<0)t+=1440;return pad(Math.floor(t/60))+':'+pad(t%60);}
+  function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function fmtDate(iso){if(!iso)return '';var d=new Date(iso+'T00:00');if(isNaN(d))return iso;return d.toLocaleDateString('fr-FR',{weekday:'short',day:'2-digit',month:'2-digit'});}
+  function etaClock(startMin,addH){var tot=startMin+addH*60,off=Math.floor(tot/1440),t=Math.round(((tot%1440)+1440)%1440);return pad(Math.floor(t/60))+':'+pad(t%60)+(off>0?' +'+off+'j':'');}
+
+  var map=L.map('map',{zoomControl:true}).setView([47.28,-2.21],10);
+  L.control.scale({imperial:false,metric:true}).addTo(map);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+  var sea=L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenSeaMap'}).addTo(map);
+  document.getElementById('seamark').addEventListener('change',function(e){if(e.target.checked){sea.addTo(map);sea.bringToFront();}else map.removeLayer(sea);});
+  setTimeout(function(){map.invalidateSize();},200);
+  window.addEventListener('resize',function(){map.invalidateSize();});
+
+  var stages=[], active=0, layer=L.layerGroup().addTo(map), suppress=false;
+  function color(i){return COLORS[i%COLORS.length];}
+  function addStage(name){stages.push({name:name||('Étape '+(stages.length+1)),date:'',time:'',wps:[]});active=stages.length-1;redraw();}
+
+  function wpIcon(n,col,act){return L.divIcon({className:'wp'+(act?' act':''),html:'<span style="--c:'+col+'">'+n+'</span>',iconSize:[26,26],iconAnchor:[13,13]});}
+  function addIcon(col){return L.divIcon({className:'add',html:'<span style="--c:'+col+'">+</span>',iconSize:[18,18],iconAnchor:[9,9]});}
+  function insert(si,i,lat,lng){suppress=true;setTimeout(function(){suppress=false;},0);stages[si].wps.splice(i,0,{lat:lat,lng:lng});redraw();}
+
+  function redraw(){
+    layer.clearLayers();
+    stages.forEach(function(st,si){
+      var col=color(si);
+      for(var i=1;i<st.wps.length;i++){(function(si,i,col){
+        var a=stages[si].wps[i-1],b=stages[si].wps[i];
+        var seg=L.polyline([[a.lat,a.lng],[b.lat,b.lng]],{color:col,weight:4,opacity:.9});
+        seg.on('mouseover',function(){seg.setStyle({weight:6});});
+        seg.on('mouseout',function(){seg.setStyle({weight:4});});
+        seg.on('click',function(e){insert(si,i,e.latlng.lat,e.latlng.lng);});
+        seg.addTo(layer);
+        var mLat=(a.lat+b.lat)/2,mLng=(a.lng+b.lng)/2;
+        var h=L.marker([mLat,mLng],{icon:addIcon(col),zIndexOffset:-50,keyboard:false});
+        h.on('click',function(){insert(si,i,mLat,mLng);});h.addTo(layer);
+      })(si,i,col);}
+      st.wps.forEach(function(p,wi){(function(si,wi,col){
+        var m=L.marker([p.lat,p.lng],{icon:wpIcon(wi+1,col,si===active),draggable:true});
+        m.on('dragend',function(e){var ll=e.target.getLatLng();stages[si].wps[wi]={lat:ll.lat,lng:ll.lng};redraw();});
+        m.on('contextmenu',function(e){L.DomEvent.preventDefault(e);stages[si].wps.splice(wi,1);redraw();});
+        m.addTo(layer);
+      })(si,wi,col);});
+    });
+    render();
+  }
+
+  function stageStats(st){var d=0;for(var i=1;i<st.wps.length;i++)d+=legNM(st.wps[i-1],st.wps[i]);return d;}
+
+  function renderStages(){
+    var host=document.getElementById('stages');host.innerHTML='';
+    stages.forEach(function(st,si){
+      var col=color(si), d=stageStats(st);
+      var chip=document.createElement('div');chip.className='chip'+(si===active?' active':'');chip.style.setProperty('--c',col);
+      chip.innerHTML='<div class="crow"><span class="dot"></span><input class="cname" value="'+esc(st.name)+'"><button class="del" title="Supprimer l\'étape">×</button></div>'+
+        '<div class="crow"><input type="date" class="cdate" value="'+(st.date||'')+'"><input type="time" class="ctime" value="'+(st.time||'')+'"></div>'+
+        '<div class="meta">'+st.wps.length+' pts · '+d.toFixed(1)+' NM</div>';
+      chip.addEventListener('click',function(e){if(e.target.tagName==='INPUT'||e.target.classList.contains('del'))return;active=si;redraw();});
+      var inp=chip.querySelector('.cname');
+      inp.style.width=(Math.max(4,st.name.length)+1)+'ch';
+      inp.addEventListener('change',function(){stages[si].name=inp.value||('Étape '+(si+1));redraw();});
+      chip.querySelector('.cdate').addEventListener('change',function(e){stages[si].date=e.target.value;redraw();});
+      chip.querySelector('.ctime').addEventListener('change',function(e){stages[si].time=e.target.value;redraw();});
+      chip.querySelector('.del').addEventListener('click',function(e){e.stopPropagation();stages.splice(si,1);if(!stages.length)addStage('Étape 1');if(active>=stages.length)active=stages.length-1;redraw();});
+      host.appendChild(chip);
+    });
+    var add=document.createElement('button');add.className='addstage';add.textContent='+ Étape';
+    add.addEventListener('click',function(){addStage();});host.appendChild(add);
+  }
+
+  function render(){
+    renderStages();
+    var spd=parseFloat(document.getElementById('spd').value)||0;
+    var totalWp=stages.reduce(function(a,s){return a+s.wps.length;},0);
+    document.getElementById('undo').disabled=!stages[active]||!stages[active].wps.length;
+    document.getElementById('gpx').disabled=stages.every(function(s){return s.wps.length<2;});
+
+    var tw=document.getElementById('totalWrap'),xw=document.getElementById('txtWrap'),wrap=document.getElementById('tableWrap');
+    if(totalWp<2){
+      tw.style.display='none';xw.style.display='none';
+      wrap.innerHTML='<div class="empty"><b>Planifie ta sortie.</b><br>Étape active : « '+esc(stages[active]?stages[active].name:'—')+' ». Clique sur la carte pour poser des waypoints, ou crée une autre étape.</div>';
+      return;
+    }
+    var body='',tripD=0,tripT=0,txt='';
+    stages.forEach(function(s,si){
+      if(!s.wps.length)return;
+      var col=color(si), sd=stageStats(s), stime=spd>0?sd/spd:NaN;
+      var sMin=s.time?(parseInt(s.time.slice(0,2),10)*60+parseInt(s.time.slice(3,5),10)):null;
+      var dlabel=fmtDate(s.date);
+      tripD+=sd; if(spd>0)tripT+=sd/spd;
+      body+='<tr class="shead" style="--c:'+col+'"><td><span class="sc"></span>'+esc(s.name)+(dlabel?' · '+dlabel:'')+(s.time?' '+s.time:'')+'</td><td class="snm">'+sd.toFixed(1)+'</td><td></td><td></td><td>'+(spd>0?dur(stime):'—')+'</td></tr>';
+      txt+='== '+s.name+(dlabel?' · '+dlabel:'')+(s.time?' '+s.time:'')+' =='+'\n';
+      var cum=0;
+      for(var i=1;i<s.wps.length;i++){
+        var d=legNM(s.wps[i-1],s.wps[i]);cum+=d;var cap=bearing(s.wps[i-1],s.wps[i]);
+        var eta=spd>0?(sMin!==null?etaClock(sMin,cum/spd):dur(cum/spd)):'—';
+        body+='<tr class="leg"><td>'+i+' → '+(i+1)+'</td><td class="d-dist">'+d.toFixed(1)+'</td><td class="d-cap">'+cap3(cap)+'°</td><td class="d-cum">'+cum.toFixed(1)+'</td><td class="d-eta">'+eta+'</td></tr>';
+        txt+='  '+i+'→'+(i+1)+'\t'+d.toFixed(1)+' NM\t'+cap3(cap)+'°\t'+cum.toFixed(1)+' NM\t'+eta+'\n';
+      }
+      txt+='  sous-total '+sd.toFixed(1)+' NM'+(spd>0?' · '+dur(stime):'')+'\n\n';
+    });
+    wrap.innerHTML='<table><thead><tr><th>Étape / leg</th><th>Dist NM</th><th>Cap</th><th>Cumul NM</th><th>ETA</th></tr></thead><tbody>'+body+'</tbody></table>';
+    tw.style.display='flex';
+    document.getElementById('tDist').textContent=tripD.toFixed(1)+' NM';
+    document.getElementById('tTime').textContent=spd>0?dur(tripT):'—';
+    document.getElementById('tSpd').textContent=spd>0?'@ '+spd+' nds':'';
+    document.getElementById('tStg').textContent=stages.filter(function(s){return s.wps.length;}).length;
+    document.getElementById('tWp').textContent=totalWp;
+    xw.style.display='block';
+    document.getElementById('txt').value='ROUTE VOILE\n\n'+txt+'TOTAL SORTIE  '+tripD.toFixed(1)+' NM'+(spd>0?' · '+dur(tripT)+' @'+spd+'nds':'');
+  }
+
+  map.on('click',function(e){if(suppress){suppress=false;return;}if(!stages.length)addStage('Étape 1');stages[active].wps.push({lat:e.latlng.lat,lng:e.latlng.lng});redraw();});
+  document.getElementById('undo').addEventListener('click',function(){if(stages[active])stages[active].wps.pop();redraw();});
+  document.getElementById('clear').addEventListener('click',function(){stages=[];addStage('Étape 1');});
+  document.getElementById('spd').addEventListener('input',render);
+  document.getElementById('gpx').addEventListener('click',function(){
+    var rtes=stages.filter(function(s){return s.wps.length;}).map(function(s){
+      var pts=s.wps.map(function(p,i){return '    <rtept lat="'+p.lat.toFixed(6)+'" lon="'+p.lng.toFixed(6)+'"><name>'+esc(s.name)+'-'+(i+1)+'</name></rtept>';}).join('\n');
+      return '  <rte><name>'+esc(s.name)+(s.date?' ('+s.date+')':'')+'</name>\n'+pts+'\n  </rte>';
+    }).join('\n');
+    var gpx='<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Planner voile" xmlns="http://www.topografix.com/GPX/1/1">\n'+rtes+'\n</gpx>';
+    var url=URL.createObjectURL(new Blob([gpx],{type:'application/gpx+xml'}));
+    var a=document.createElement('a');a.href=url;a.download='sortie-voile.gpx';document.body.appendChild(a);a.click();a.remove();
+    setTimeout(function(){URL.revokeObjectURL(url);},1000);
+  });
+
+  addStage('Étape 1');
+})();
+</script>
