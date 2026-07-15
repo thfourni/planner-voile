@@ -98,6 +98,8 @@
   .wxpanel{width:230px;flex:0 0 auto;background:var(--panel);border-left:1px solid var(--edge);display:flex;flex-direction:column;overflow-y:auto}
   .wxpanel-head{padding:10px 12px;border-bottom:1px solid var(--edge)}
   .wxbody{padding:12px;display:flex;flex-direction:column;gap:14px}
+  .wxrefresh{display:flex}
+  .wxrefresh button{width:100%}
   .wxstatus{font-size:11px;color:var(--dim);line-height:1.5}
   .wxslider{display:flex;flex-direction:column;gap:8px}
   .wxtime{font:700 20px var(--mono);color:var(--cyan);text-align:center}
@@ -158,6 +160,7 @@
     <div class="wxpanel-head"><label class="seatoggle"><input type="checkbox" id="wxToggle"> vent (open-meteo)</label></div>
     <div class="wxbody">
       <div class="wxstatus" id="wxStatus">Active la case pour charger le vent de la zone visible, à la date de l'étape active.</div>
+      <div class="wxrefresh" id="wxRefreshRow" style="display:none"><button class="act primary" id="wxRefreshBtn">Charger le vent de cette vue</button></div>
       <div class="wxslider" id="wxSliderWrap" style="display:none">
         <div class="wxtime" id="wxTimeLabel">—</div>
         <input type="range" id="wxSlider" min="0" max="23" value="12" step="1">
@@ -305,8 +308,8 @@
     if(!wxData)return;
     document.getElementById('wxTimeLabel').textContent=pad(idx)+':00';
     wxData.points.forEach(function(p){
-      if(!p.hourly||!p.hourly.wind_speed_10m)return;
-      var spd=p.hourly.wind_speed_10m[idx], dir=p.hourly.wind_direction_10m[idx];
+      if(!p.s||!p.d)return;
+      var spd=p.s[idx], dir=p.d[idx];
       if(spd==null||dir==null)return;
       var col=wxColor(spd);
       var icon=L.divIcon({className:'wxmarker',html:
@@ -318,17 +321,34 @@
       L.marker([p.lat,p.lng],{icon:icon,interactive:false,zIndexOffset:200}).addTo(wxLayer);
     });
   }
-  var wxCache={}, wxCacheOrder=[], WX_CACHE_MAX=40, wxReqSeq=0;
+  var wxCache={}, wxCacheOrder=[], WX_CACHE_MAX=15, WX_CACHE_TTL=45*60*1000, WX_LS_KEY='plannerVoileWxCache', wxReqSeq=0;
   function wxCacheKey(date,bounds){
     return date+'|'+bounds.getSouth().toFixed(2)+','+bounds.getWest().toFixed(2)+','+bounds.getNorth().toFixed(2)+','+bounds.getEast().toFixed(2);
+  }
+  function wxCacheGet(key){
+    var e=wxCache[key];
+    return (e&&(Date.now()-e.ts)<WX_CACHE_TTL)?e:null;
+  }
+  function wxPersist(){
+    try{localStorage.setItem(WX_LS_KEY,JSON.stringify(wxCache));}catch(e){}
   }
   function wxCacheSet(key,val){
     if(!(key in wxCache))wxCacheOrder.push(key);
     wxCache[key]=val;
     if(wxCacheOrder.length>WX_CACHE_MAX)delete wxCache[wxCacheOrder.shift()];
+    wxPersist();
   }
+  (function wxLoadPersisted(){
+    try{
+      var saved=JSON.parse(localStorage.getItem(WX_LS_KEY)||'{}'), now=Date.now();
+      Object.keys(saved).forEach(function(k){
+        if(now-saved[k].ts<WX_CACHE_TTL){wxCache[k]=saved[k];wxCacheOrder.push(k);}
+      });
+    }catch(e){}
+  })();
   function loadWeatherGrid(){
-    var status=document.getElementById('wxStatus'), sliderWrap=document.getElementById('wxSliderWrap');
+    var status=document.getElementById('wxStatus'), sliderWrap=document.getElementById('wxSliderWrap'), refreshRow=document.getElementById('wxRefreshRow');
+    refreshRow.style.display='none';
     if(!document.getElementById('wxToggle').checked){
       wxLayer.clearLayers();sliderWrap.style.display='none';wxData=null;stopWxPlay();
       status.textContent='Active la case pour charger le vent de la zone visible, à la date de l\'étape active.';
@@ -343,8 +363,9 @@
     var bounds=map.getBounds(), key=wxCacheKey(st.date,bounds);
     var slider=document.getElementById('wxSlider');
     var hh=st.time?parseInt(st.time.slice(0,2),10):12;
-    if(wxCache[key]){
-      wxData=wxCache[key];
+    var cached=wxCacheGet(key);
+    if(cached){
+      wxData=cached;
       sliderWrap.style.display='flex';
       slider.value=hh;
       renderWxFrame(hh);
@@ -368,7 +389,10 @@
         if(seq!==wxReqSeq)return;
         if(data&&data.error)throw new Error(data.reason||'plage de dates non couverte');
         var arr=Array.isArray(data)?data:[data];
-        var grid={date:st.date,points:pts.map(function(p,i){var d=arr[i];return {lat:p.lat,lng:p.lng,hourly:d&&d.hourly};})};
+        var grid={date:st.date,ts:Date.now(),points:pts.map(function(p,i){
+          var h=arr[i]&&arr[i].hourly;
+          return {lat:p.lat,lng:p.lng,s:h?h.wind_speed_10m:null,d:h?h.wind_direction_10m:null};
+        })};
         wxCacheSet(key,grid);
         wxData=grid;
         sliderWrap.style.display='flex';
@@ -383,6 +407,7 @@
       });
   }
   document.getElementById('wxToggle').addEventListener('change',loadWeatherGrid);
+  document.getElementById('wxRefreshBtn').addEventListener('click',loadWeatherGrid);
   document.getElementById('wxSlider').addEventListener('input',function(e){renderWxFrame(parseInt(e.target.value,10));});
   document.getElementById('wxPlay').addEventListener('click',function(){
     if(wxPlaying){stopWxPlay();return;}
@@ -395,8 +420,20 @@
     },700);
   });
   map.on('moveend',function(){
-    if(wxTimer)clearTimeout(wxTimer);
-    wxTimer=setTimeout(loadWeatherGrid,900);
+    if(!document.getElementById('wxToggle').checked)return;
+    var st=stages[active];
+    if(!st||!st.date)return;
+    var key=wxCacheKey(st.date,map.getBounds()), cached=wxCacheGet(key);
+    var status=document.getElementById('wxStatus'), refreshRow=document.getElementById('wxRefreshRow');
+    if(cached){
+      wxData=cached;
+      renderWxFrame(parseInt(document.getElementById('wxSlider').value,10));
+      refreshRow.style.display='none';
+      status.textContent='Vent · '+st.date+' · zone visible (cache)';
+    }else{
+      refreshRow.style.display='flex';
+      status.textContent='Vue déplacée — charge le vent pour cette zone quand tu veux.';
+    }
   });
 
   function wpIcon(n,col,act){return L.divIcon({className:'wp'+(act?' act':''),html:'<span style="--c:'+col+'">'+n+'</span>',iconSize:[26,26],iconAnchor:[13,13]});}

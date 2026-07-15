@@ -12,7 +12,7 @@ traversée à la voile.
 - Calcul de distance, cap et estimation de temps/arrivée en fonction de la vitesse
 - Annuler (Ctrl+Z) la dernière action, quel que soit son type
 - Panneau bas redimensionnable (glisser la barre au-dessus) pour ajuster l'espace carte/tableau
-- Couche vent (Open-Meteo) en grille (280 barbules météo) sur toute la zone visible, avec un curseur pour animer la prévision heure par heure de la date de l'étape active ; requêtes mises en cache pour éviter les limites de débit lors du zoom/pan
+- Couche vent (Open-Meteo) en grille (280 barbules météo) sur la zone visible, avec un curseur pour animer la prévision heure par heure de la date de l'étape active ; chargement à la demande (bouton) au pan/zoom + cache persistant (`localStorage`, 45 min) pour éviter les 429
 - Export de la route au format GPX (avec description par étape) pour un GPS ou une app de navigation
 - Sauvegarde/chargement d'une session au format JSON
 
