@@ -55,6 +55,8 @@
   .chip .cname{width:100%;background:transparent;border:none;border-bottom:1px solid transparent;color:var(--text);font:600 13px var(--sans);padding:0;min-width:0}
   .chip .cname:focus{outline:none;border-bottom-color:var(--c)}
   .chip .meta{font:11px var(--mono);color:var(--dim)}
+  .chip .tide{font:11px var(--mono);color:var(--text);white-space:normal;line-height:1.4;margin-top:2px}
+  .chip .tide.dim{color:var(--dim)}
   .chip .del{border:none;background:transparent;color:var(--dim);font-size:15px;line-height:1;cursor:pointer;padding:0 2px;flex:0 0 auto}
   .chip .del:hover{color:var(--red)}
   .addstage{border:1px dashed var(--edge);border-radius:10px;background:transparent;color:var(--cyan);padding:9px 11px;cursor:pointer;font:600 12px var(--sans);margin:0 10px 10px}
@@ -279,6 +281,108 @@
     });
   }
 
+  var TIDE_KEY='a569aca1512207de9b49590779748c42'; // clé api-maree.fr gratuite, volontairement publique (pas de backend)
+  var tideSites=null, tideSitesPromise=null;
+  var tideCache={}, tideCacheOrder=[], TIDE_CACHE_MAX=60, TIDE_LS_KEY='plannerVoileTideCache', tideTimer=null;
+  function tidePersist(){try{localStorage.setItem(TIDE_LS_KEY,JSON.stringify(tideCache));}catch(e){}}
+  (function tideLoadPersisted(){
+    try{
+      var saved=JSON.parse(localStorage.getItem(TIDE_LS_KEY)||'{}');
+      Object.keys(saved).forEach(function(k){tideCache[k]=saved[k];tideCacheOrder.push(k);});
+    }catch(e){}
+  })();
+  function tideCacheSet(key,val){
+    if(!(key in tideCache))tideCacheOrder.push(key);
+    tideCache[key]=val;
+    if(tideCacheOrder.length>TIDE_CACHE_MAX)delete tideCache[tideCacheOrder.shift()];
+    tidePersist();
+  }
+  function loadTideSites(){
+    if(tideSites)return Promise.resolve(tideSites);
+    if(tideSitesPromise)return tideSitesPromise;
+    tideSitesPromise=fetch('https://api-maree.fr/sites?key='+TIDE_KEY)
+      .then(function(r){return r.json();})
+      .then(function(d){tideSites=(d&&d.sites)||[];return tideSites;})
+      .catch(function(){tideSites=[];return tideSites;});
+    return tideSitesPromise;
+  }
+  function nearestTideSite(lat,lng){
+    if(!tideSites||!tideSites.length)return null;
+    var best=null,bestD=Infinity;
+    tideSites.forEach(function(s){
+      var d=legNM({lat:lat,lng:lng},{lat:s.latitude,lng:s.longitude});
+      if(d<bestD){bestD=d;best=s;}
+    });
+    return best;
+  }
+  function isoMinute(d){return d.toISOString().slice(0,16);}
+  function fetchTideWindow(siteId,targetDate){
+    var key=siteId+'|'+targetDate.toISOString().slice(0,13);
+    if(tideCache[key])return Promise.resolve(tideCache[key]);
+    var from=new Date(targetDate.getTime()-9*3600000), to=new Date(targetDate.getTime()+15*3600000);
+    var url='https://api-maree.fr/water-levels?site='+encodeURIComponent(siteId)+
+      '&from='+isoMinute(from)+'&to='+isoMinute(to)+'&step=10&tz=UTC&key='+TIDE_KEY;
+    return fetch(url).then(function(r){
+      if(r.status===429)throw new Error('429');
+      return r.json();
+    }).then(function(d){
+      if(!d||!d.data)throw new Error((d&&d.error)||'réponse invalide');
+      tideCacheSet(key,d.data);
+      return d.data;
+    });
+  }
+  function findTideExtrema(series){
+    var ex=[];
+    for(var i=1;i<series.length-1;i++){
+      var a=series[i-1].height,b=series[i].height,c=series[i+1].height;
+      if(b>a&&b>c)ex.push({time:series[i].time,height:b,type:'high'});
+      else if(b<a&&b<c)ex.push({time:series[i].time,height:b,type:'low'});
+    }
+    return ex;
+  }
+  function analyzeTide(series,targetDate){
+    var t=targetDate.getTime(), nearest=null, nearestDiff=Infinity;
+    series.forEach(function(p){
+      var d=Math.abs(new Date(p.time).getTime()-t);
+      if(d<nearestDiff){nearestDiff=d;nearest=p;}
+    });
+    var extrema=findTideExtrema(series), next=null, prev=null;
+    for(var i=0;i<extrema.length;i++){
+      if(new Date(extrema[i].time).getTime()>=t){next=extrema[i];break;}
+      prev=extrema[i];
+    }
+    if(!nearest||!next||!prev)return null;
+    return {height:nearest.height,rising:next.type==='high',nextType:next.type,nextTime:next.time,nextHeight:next.height,
+      range:Math.abs((next.type==='high'?next.height:prev.height)-(next.type==='high'?prev.height:next.height))};
+  }
+  function refreshAllTides(){
+    var spd=parseFloat(document.getElementById('spd').value)||0;
+    loadTideSites().then(function(){
+      stages.forEach(function(st){
+        if(!st.wps.length||!st.date){st.tideDep=null;st.tideArr=null;return;}
+        var depDate=new Date(st.date+'T'+(st.time||'12:00')+':00Z');
+        var dep=st.wps[0], depSite=nearestTideSite(dep.lat,dep.lng);
+        if(depSite){
+          fetchTideWindow(depSite.site_id,depDate).then(function(s){return analyzeTide(s,depDate);}).catch(function(){return null;})
+            .then(function(r){st.tideDep=r?{site:depSite.name,reading:r}:false;renderStages();});
+        }else st.tideDep=false;
+        if(st.wps.length>1){
+          var arr=st.wps[st.wps.length-1], arrSite=nearestTideSite(arr.lat,arr.lng);
+          var travelH=spd>0?stageStats(st)/spd:0;
+          var arrDate=new Date(depDate.getTime()+travelH*3600000);
+          if(arrSite){
+            fetchTideWindow(arrSite.site_id,arrDate).then(function(s){return analyzeTide(s,arrDate);}).catch(function(){return null;})
+              .then(function(r){st.tideArr=r?{site:arrSite.name,reading:r}:false;renderStages();});
+          }else st.tideArr=false;
+        }else st.tideArr=null;
+      });
+    });
+  }
+  function scheduleTideRefresh(){
+    if(tideTimer)clearTimeout(tideTimer);
+    tideTimer=setTimeout(refreshAllTides,500);
+  }
+
   var wxData=null, wxPlaying=false, wxPlayTimer=null;
   function wxColor(spd){return spd>=20?'var(--red)':spd>=10?'var(--amber)':'var(--cyan)';}
   function gridPoints(bounds,cols,rows){
@@ -466,10 +570,17 @@
     render();
     if(wxTimer)clearTimeout(wxTimer);
     wxTimer=setTimeout(loadWeatherGrid,500);
+    scheduleTideRefresh();
   }
 
   function stageStats(st){var d=0;for(var i=1;i<st.wps.length;i++)d+=legNM(st.wps[i-1],st.wps[i]);return d;}
 
+  function tideLine(label,entry){
+    if(entry==null)return '';
+    if(entry===false)return '<div class="tide dim">'+label+' : marée indisponible</div>';
+    var r=entry.reading;
+    return '<div class="tide">'+(r.rising?'↗':'↘')+' '+label+' '+r.height.toFixed(1)+'m · '+(r.nextType==='high'?'PM':'BM')+' '+r.nextTime.slice(11,16)+' ('+r.nextHeight.toFixed(1)+'m) · amp '+r.range.toFixed(1)+'m</div>';
+  }
   function renderStages(){
     var host=document.getElementById('stages');host.innerHTML='';
     stages.forEach(function(st,si){
@@ -477,7 +588,8 @@
       var chip=document.createElement('div');chip.className='chip'+(si===active?' active':'');chip.style.setProperty('--c',col);
       chip.innerHTML='<div class="crow"><span class="dot"></span><input class="cname" value="'+esc(st.name)+'"><button class="del" title="Supprimer l\'étape">×</button></div>'+
         '<div class="crow"><input type="date" class="cdate" value="'+(st.date||'')+'"><input type="time" class="ctime" value="'+(st.time||'')+'"></div>'+
-        '<div class="meta">'+st.wps.length+' pts · '+d.toFixed(1)+' NM</div>';
+        '<div class="meta">'+st.wps.length+' pts · '+d.toFixed(1)+' NM</div>'+
+        tideLine('Départ',st.tideDep)+tideLine('Arrivée',st.tideArr);
       chip.addEventListener('click',function(e){if(e.target.tagName==='INPUT'||e.target.classList.contains('del'))return;active=si;redraw();});
       var inp=chip.querySelector('.cname');
       inp.addEventListener('change',function(){snapshot();stages[si].name=inp.value||('Étape '+(si+1));stages[si].auto=false;redraw();});
@@ -539,7 +651,7 @@
     redraw();scheduleAutoName(active);
   });
   document.getElementById('clear').addEventListener('click',function(){snapshot();stages=[];addStage('Étape 1');});
-  document.getElementById('spd').addEventListener('input',render);
+  document.getElementById('spd').addEventListener('input',function(){render();scheduleTideRefresh();});
   document.getElementById('gpx').addEventListener('click',function(){
     var spd=parseFloat(document.getElementById('spd').value)||0;
     var rtes=stages.filter(function(s){return s.wps.length;}).map(function(s){

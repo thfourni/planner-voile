@@ -16,6 +16,7 @@ traversée à la voile.
 - Export de la route au format GPX (avec description par étape) pour un GPS ou une app de navigation
 - Sauvegarde/chargement d'une session au format JSON
 - Lien de partage : encode tout le voyage dans l'URL (`#data=...`, jamais envoyé au serveur), copié en un clic ; ouvrir le lien recharge le voyage complet (étapes, dates, vitesse) et recadre la carte dessus
+- Marées (api-maree.fr / données IFREMER-PREVIMER) au départ et à l'arrivée de chaque étape : hauteur d'eau, sens (montante/descendante), heure et hauteur de la prochaine pleine/basse mer, amplitude de la marée (pas de coefficient officiel disponible dans cette API)
 
 ## Utiliser l'outil
 
