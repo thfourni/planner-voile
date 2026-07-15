@@ -15,6 +15,7 @@ traversée à la voile.
 - Couche vent (Open-Meteo) en grille (280 barbules météo) sur la zone visible, avec un curseur pour animer la prévision heure par heure de la date de l'étape active ; chargement à la demande (bouton) au pan/zoom + cache persistant (`localStorage`, 45 min) pour éviter les 429
 - Export de la route au format GPX (avec description par étape) pour un GPS ou une app de navigation
 - Sauvegarde/chargement d'une session au format JSON
+- Lien de partage : encode tout le voyage dans l'URL (`#data=...`, jamais envoyé au serveur), copié en un clic ; ouvrir le lien recharge le voyage complet (étapes, dates, vitesse) et recadre la carte dessus
 
 ## Utiliser l'outil
 

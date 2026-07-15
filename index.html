@@ -141,6 +141,7 @@
           <button class="act" id="saveJson">Sauvegarder session</button>
           <button class="act" id="loadJsonBtn">Charger session</button>
           <input type="file" id="loadJsonInput" accept="application/json" style="display:none">
+          <button class="act" id="shareLink">🔗 Copier le lien de partage</button>
           <button class="act primary" id="gpx">Export GPX</button>
         </div>
       </div>
@@ -213,15 +214,15 @@
 
   var stages=[], active=0, layer=L.layerGroup().addTo(map), wxLayer=L.layerGroup().addTo(map), suppress=false, wxTimer=null;
 
-  var history=[];
-  function snapshot(){history.push(JSON.stringify(stages));if(history.length>50)history.shift();document.getElementById('undoBtn').disabled=false;}
+  var undoStack=[];
+  function snapshot(){undoStack.push(JSON.stringify(stages));if(undoStack.length>50)undoStack.shift();document.getElementById('undoBtn').disabled=false;}
   function undo(){
-    if(!history.length)return;
-    stages=JSON.parse(history.pop());
+    if(!undoStack.length)return;
+    stages=JSON.parse(undoStack.pop());
     if(active>=stages.length)active=stages.length-1;
     if(active<0)active=0;
     redraw();
-    document.getElementById('undoBtn').disabled=!history.length;
+    document.getElementById('undoBtn').disabled=!undoStack.length;
   }
   document.getElementById('undoBtn').addEventListener('click',undo);
   window.addEventListener('keydown',function(e){
@@ -579,12 +580,58 @@
         active=0;
         if(data.spd)document.getElementById('spd').value=data.spd;
         redraw();
+        fitToStages();
       }catch(err){alert('Fichier JSON invalide : '+err.message);}
     };
     reader.readAsText(file);
     e.target.value='';
   });
 
-  addStage('Étape 1');
+  function b64EncodeUnicode(str){
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g,function(_,p){return String.fromCharCode('0x'+p);}));
+  }
+  function b64DecodeUnicode(str){
+    return decodeURIComponent(atob(str).split('').map(function(c){return '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2);}).join(''));
+  }
+  function fitToStages(){
+    var pts=[];
+    stages.forEach(function(s){s.wps.forEach(function(p){pts.push([p.lat,p.lng]);});});
+    if(pts.length)map.fitBounds(pts,{padding:[30,30]});
+  }
+  document.getElementById('shareLink').addEventListener('click',function(){
+    var btn=this, orig=btn.textContent;
+    var data={spd:parseFloat(document.getElementById('spd').value)||0,stages:stages};
+    var encoded=b64EncodeUnicode(JSON.stringify(data));
+    var url=location.origin+location.pathname+'#data='+encoded;
+    function flash(msg){btn.textContent=msg;setTimeout(function(){btn.textContent=orig;},2200);}
+    var warn=url.length>8000?' (lien long, vérifie qu\'il passe en entier dans ton appli)':'';
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(url).then(function(){flash('✓ Lien copié'+warn);}).catch(function(){window.prompt('Copie ce lien :',url);});
+    }else{
+      window.prompt('Copie ce lien :',url);
+    }
+  });
+  function loadFromShareLink(){
+    var m=location.hash.match(/^#data=(.+)$/);
+    if(!m)return false;
+    try{
+      var data=JSON.parse(b64DecodeUnicode(decodeURIComponent(m[1])));
+      if(!data||!Array.isArray(data.stages)||!data.stages.length)throw new Error('format invalide');
+      stages=data.stages.map(function(s,i){return {
+        name:s.name||('Étape '+(i+1)),date:s.date||'',time:s.time||'',auto:!!s.auto,
+        wps:(s.wps||[]).map(function(p){return {lat:+p.lat,lng:+p.lng};})
+      };});
+      active=0;
+      if(data.spd)document.getElementById('spd').value=data.spd;
+      return true;
+    }catch(err){
+      return false;
+    }finally{
+      history.replaceState(null,'',location.pathname+location.search);
+    }
+  }
+
+  if(!loadFromShareLink())addStage('Étape 1');
+  else{redraw();fitToStages();}
 })();
 </script>
